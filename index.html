@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Week View</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -263,7 +262,7 @@
             <input type="file" id="calFile" accept=".pst,.ics" onchange="handleFileUpload(this.files[0])" hidden>
         </label>
         <button onclick="printWeekView()">Print</button>
-        <button onclick="makePDF()">Make PDF</button>
+        <button onclick="saveImages()">Save Image</button>
     </div>
     
     <h1>Weekly Card</h1>
@@ -659,32 +658,29 @@
             window.print();
         }
         
-        async function makePDF() {
-            const element = document.getElementById('weeksContainer');
+        async function saveImages() {
+            // Save each visible card as a PNG with the exact card bounds
+            const targets = currentWeekSet.length
+                ? currentWeekSet
+                : weekBoxes.map((box, idx) => ({ box, week: idx + 1 }));
 
-            // Temporarily remove overflow:hidden so html2canvas renders borders
-            element.style.overflow = 'visible';
+            for (const { box, week } of targets) {
+                const rect = box.getBoundingClientRect();
+                const canvas = await html2canvas(box, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: rect.width,
+                    height: rect.height,
+                    scrollX: 0,
+                    scrollY: 0
+                });
 
-            const canvas = await html2canvas(element, {
-                scale: 3,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                width: element.offsetWidth,
-                height: element.offsetHeight,
-                scrollX: 0,
-                scrollY: 0
-            });
-
-            element.style.overflow = 'hidden';
-
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'in',
-                format: [8.5, 11]
-            });
-            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 8.5, 11);
-            pdf.save('week_view.pdf');
+                const link = document.createElement('a');
+                link.download = `week-card-${week}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
         }
     </script>
 </body>
