@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week View</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --card-bg: transparent;
+            --card-dot: #ede5d7;
+            --card-border: #d6cdbf;
+            --card-text: #6a655d;
+            --accent: #2c2c2c;
+        }
+
+        body {
+            margin: 20px;
+            font-family: 'Futura', 'Trebuchet MS', sans-serif;
+            background-color: #fbf8ef;
+            color: var(--card-text);
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #2c2c2c;
+            color: #fafaf8;
+            border: 1px solid #2c2c2c;
+            border-radius: 0;
+            transition: all 0.2s;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            background-color: #fafaf8;
+            color: #2c2c2c;
+        }
+        
+        button:active {
+            opacity: 0.8;
+        }
+
+        select {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #fafaf8;
+            color: #2c2c2c;
+            border: 1px solid #2c2c2c;
+            border-radius: 0;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        
+        h1 {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #555;
+        }
+        
+        .week-box {
+            width: 8.5in;
+            height: 3in;
+            border: 1px solid var(--card-border);
+            background-color: transparent;
+            background-image:
+                radial-gradient(var(--card-dot) 3%, transparent 14%),
+                radial-gradient(var(--card-dot) 3%, transparent 14%);
+            background-size: 0.14in 0.14in, 0.14in 0.14in;
+            background-position: 0 0, 0.07in 0.07in;
+            padding: 0;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: 2in 1in;
+            gap: 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        .weeks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35in;
+            align-items: center;
+        }
+
+        .column {
+            border-right: 1px solid rgba(0,0,0,0.06);
+            border-radius: 0;
+            background-color: transparent;
+            padding: 10px 10px 6px 10px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            position: relative;
+        }
+        
+        .column:nth-child(5),
+        .column:last-child {
+            border-right: none;
+        }
+
+        .watermark {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 300px;
+            font-weight: 700;
+            color: rgba(0, 0, 0, 0.08);
+            pointer-events: none;
+            z-index: 1;
+            line-height: 1;
+            letter-spacing: -5px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .week-box > .column:nth-of-type(-n+5) {
+            grid-column: span 2;
+        }
+
+        .week-box > .column:nth-of-type(n+6) {
+            grid-column: span 5;
+            border-top: 1px solid #e8e6df;
+        }
+        
+        .day-label {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            color: rgba(0,0,0,0.5);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            flex-shrink: 0;
+            line-height: 1;
+            font-stretch: condensed;
+        }
+        
+        .column-content {
+            flex: 1;
+            display: block;
+            column-count: 2;
+            column-gap: 6px;
+            column-fill: balance;
+            overflow: hidden;
+            padding-top: 4px;
+        }
+
+        .pst-item {
+            display: block;
+            break-inside: avoid;
+            font-size: 8px;
+            line-height: 1.3;
+            color: var(--card-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 3px;
+        }
+
+        .upload-btn {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #2c2c2c;
+            color: #fafaf8;
+            border: 1px solid #2c2c2c;
+            border-radius: 0;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+
+        .upload-btn:hover {
+            background-color: #fafaf8;
+            color: #2c2c2c;
+        }
+        
+        @page {
+            size: 8.5in 11in portrait;
+            margin: 0;
+        }
+
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            html, body {
+                width: 8.5in;
+                height: 11in;
+            }
+
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+            }
+
+            .controls {
+                display: none !important;
+            }
+
+            h1 {
+                display: none !important;
+            }
+
+            .week-box {
+                box-shadow: none;
+                margin: 0;
+                width: 8.5in;
+                height: 3in;
+                border: 1px solid var(--card-border);
+                page-break-inside: avoid;
+            }
+
+            .weeks-container {
+                gap: 0.25in;
+            }
+
+            .watermark {
+                color: rgba(0, 0, 0, 0.08);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <select id="yearSelect" onchange="populateWeeks()"></select>
+        <select id="weekSelect" onchange="updateWatermark()"></select>
+        <label class="upload-btn">
+            Upload .pst / .ics
+            <input type="file" id="calFile" accept=".pst,.ics" onchange="handleFileUpload(this.files[0])" hidden>
+        </label>
+        <button onclick="printWeekView()">Print</button>
+        <button onclick="makePDF()">Make PDF</button>
+    </div>
+    
+    <h1>Weekly Card</h1>
+    <div id="weeksContainer" class="weeks-container">
+        <div class="week-box">
+            <span class="watermark"></span>
+            <div class="column">
+                <div class="day-label">M</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">W</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">F</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+        </div>
+        <div class="week-box">
+            <span class="watermark"></span>
+            <div class="column">
+                <div class="day-label">M</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">W</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">F</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+        </div>
+        <div class="week-box">
+            <span class="watermark"></span>
+            <div class="column">
+                <div class="day-label">M</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">W</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">T</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">F</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+            <div class="column">
+                <div class="day-label">S</div>
+                <div class="column-content"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const yearSelect = document.getElementById('yearSelect');
+        const weekSelect = document.getElementById('weekSelect');
+        const weekBoxes = Array.from(document.querySelectorAll('.week-box'));
+
+        // Populate year dropdown, default to current year
+        const currentYear = new Date().getFullYear();
+        for (let y = 2026; y <= 2030; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            if (y === currentYear) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+
+        function getISOWeekStart(year, week) {
+            // Jan 4 is always in ISO week 1
+            const jan4 = new Date(year, 0, 4);
+            const dayOfWeek = jan4.getDay() || 7; // Mon=1 ... Sun=7
+            const week1Monday = new Date(jan4);
+            week1Monday.setDate(jan4.getDate() - dayOfWeek + 1);
+            const result = new Date(week1Monday);
+            result.setDate(week1Monday.getDate() + (week - 1) * 7);
+            return result;
+        }
+
+        function getCurrentISOWeek() {
+            const now = new Date();
+            const tmp = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const dayOfWeek = tmp.getDay() || 7;
+            tmp.setDate(tmp.getDate() + 4 - dayOfWeek); // nearest Thursday
+            const yearStart = new Date(tmp.getFullYear(), 0, 1);
+            return Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7);
+        }
+
+        function getISOWeekCount(year) {
+            // A year has 53 weeks if Jan 1 is Thursday,
+            // or Dec 31 is Thursday
+            const jan1 = new Date(year, 0, 1);
+            const dec31 = new Date(year, 11, 31);
+            return (jan1.getDay() === 4 || dec31.getDay() === 4) ? 53 : 52;
+        }
+
+        function normalizeWeek(year, week) {
+            let y = year;
+            let w = week;
+            while (true) {
+                const maxW = getISOWeekCount(y);
+                if (w > maxW) {
+                    w -= maxW;
+                    y += 1;
+                } else if (w < 1) {
+                    y -= 1;
+                    w += getISOWeekCount(y);
+                } else {
+                    break;
+                }
+            }
+            return { year: y, week: w };
+        }
+
+        function formatDate(d) {
+            const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                            'Jul','Aug','Sep','Oct','Nov','Dec'];
+            return months[d.getMonth()] + ' ' + d.getDate();
+        }
+
+        const dayLetters = ['M','T','W','T','F','S','S'];
+        const monthLetters = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+        let pstItems = [];
+        let currentWeekSet = [];
+
+        function populateWeeks() {
+            const year = parseInt(yearSelect.value);
+            const numWeeks = getISOWeekCount(year);
+            weekSelect.innerHTML = '';
+            for (let w = 1; w <= numWeeks; w++) {
+                const mon = getISOWeekStart(year, w);
+                const sun = new Date(mon);
+                sun.setDate(mon.getDate() + 6);
+                const opt = document.createElement('option');
+                opt.value = w;
+                opt.textContent = 'Wk ' + w + ': ' + formatDate(mon) + ' – ' + formatDate(sun);
+                weekSelect.appendChild(opt);
+            }
+            updateWatermark();
+        }
+
+        populateWeeks();
+        // Default to current week
+        const currentWeek = getCurrentISOWeek();
+        if (weekSelect.querySelector('option[value="' + currentWeek + '"]')) {
+            weekSelect.value = currentWeek;
+            updateWatermark();
+        }
+
+        function updateWatermark() {
+            const baseYear = parseInt(yearSelect.value);
+            const baseWeek = parseInt(weekSelect.value);
+            currentWeekSet = [];
+
+            weekBoxes.forEach((box, idx) => {
+                const { year, week } = normalizeWeek(baseYear, baseWeek + idx);
+                currentWeekSet.push({ year, week, box });
+                box.dataset.week = week;
+                const wm = box.querySelector('.watermark');
+                if (wm) wm.textContent = week;
+                const mon = getISOWeekStart(year, week);
+                const labels = box.querySelectorAll('.day-label');
+                for (let i = 0; i < labels.length; i++) {
+                    const d = new Date(mon);
+                    d.setDate(mon.getDate() + i);
+                    labels[i].textContent = dayLetters[i] + monthLetters[d.getMonth()] + d.getDate();
+                }
+            });
+
+            displayWeekItems();
+        }
+
+        async function handleFileUpload(file) {
+            if (!file) return;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext === 'ics') {
+                await handleICSUpload(file);
+            } else if (ext === 'pst') {
+                await handlePSTUpload(file);
+            }
+            // Reset so the same file can be re-uploaded
+            document.getElementById('calFile').value = '';
+        }
+
+        async function handleICSUpload(file) {
+            try {
+                const text = await file.text();
+                pstItems = pstItems.concat(parseICS(text));
+                displayWeekItems();
+            } catch (e) {
+                console.error('ICS parse error:', e);
+                alert('Failed to parse ICS file. See console for details.');
+            }
+        }
+
+        function parseICS(text) {
+            const items = [];
+            const lines = unfoldICS(text);
+            let inEvent = false;
+            let summary = '';
+            let dtstart = null;
+
+            for (const line of lines) {
+                if (line === 'BEGIN:VEVENT') {
+                    inEvent = true;
+                    summary = '';
+                    dtstart = null;
+                } else if (line === 'END:VEVENT') {
+                    if (summary && dtstart) {
+                        items.push({ subject: summary, date: dtstart });
+                    }
+                    inEvent = false;
+                } else if (inEvent) {
+                    if (line.startsWith('SUMMARY:') || line.startsWith('SUMMARY;')) {
+                        summary = line.substring(line.indexOf(':') + 1);
+                    } else if (line.startsWith('DTSTART:') || line.startsWith('DTSTART;')) {
+                        dtstart = parseICSDate(line.substring(line.indexOf(':') + 1));
+                    }
+                }
+            }
+            return items;
+        }
+
+        function unfoldICS(text) {
+            // ICS spec: lines starting with space/tab are continuations
+            return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+                       .replace(/\n[ \t]/g, '')
+                       .split('\n');
+        }
+
+        function parseICSDate(val) {
+            // Handles: 20260202T140000Z (UTC), 20260202T140000 (local/floating), 20260202 (all-day)
+            const isUTC = val.endsWith('Z');
+            const clean = isUTC ? val.slice(0, -1) : val;
+            if (clean.length < 8) return null;
+
+            const y = parseInt(clean.substring(0, 4));
+            const m = parseInt(clean.substring(4, 6)) - 1;
+            const d = parseInt(clean.substring(6, 8));
+
+            // All-day date
+            if (clean.length === 8) {
+                return isUTC ? new Date(Date.UTC(y, m, d)) : new Date(y, m, d);
+            }
+
+            // Date-time
+            const h = parseInt(clean.substring(9, 11) || '0');
+            const min = parseInt(clean.substring(11, 13) || '0');
+            const s = parseInt(clean.substring(13, 15) || '0');
+
+            return isUTC
+                ? new Date(Date.UTC(y, m, d, h, min, s))
+                : new Date(y, m, d, h, min, s);
+        }
+
+        async function handlePSTUpload(file) {
+            if (!file) return;
+            try {
+                const [{ PSTFile }, { Buffer }] = await Promise.all([
+                    import('https://esm.sh/pst-extractor@1.12.0'),
+                    import('https://esm.sh/node/buffer.mjs')
+                ]);
+                const ab = await file.arrayBuffer();
+                const buf = Buffer.from(new Uint8Array(ab));
+                const pst = new PSTFile(buf);
+                const root = pst.getRootFolder();
+                walkFolder(root);
+                displayWeekItems();
+            } catch (e) {
+                console.error('PST parse error:', e);
+                alert('Failed to parse PST file: ' + e.message);
+            }
+        }
+
+        function walkFolder(folder) {
+            // Recurse subfolders
+            if (folder.hasSubfolders) {
+                try {
+                    for (const sub of folder.getSubFolders()) {
+                        try { walkFolder(sub); } catch (e) {}
+                    }
+                } catch (e) {}
+            }
+
+            // Extract items via cursor
+            if (folder.contentCount > 0) {
+                try {
+                    let item;
+                    while ((item = folder.getNextChild()) != null) {
+                        try { extractItem(item); } catch (e) {}
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function extractItem(msg) {
+            const subject = msg.subject || '';
+            const date = msg.startTime || msg.clientSubmitTime
+                || msg.messageDeliveryTime || msg.creationTime;
+            if (subject && date && !isNaN(date)) {
+                pstItems.push({ subject, date });
+            }
+        }
+
+        function displayWeekItems() {
+            weekBoxes.forEach(box => {
+                box.querySelectorAll('.pst-item').forEach(el => el.remove());
+            });
+
+            if (pstItems.length === 0 || currentWeekSet.length === 0) return;
+
+            for (const { year, week, box } of currentWeekSet) {
+                const weekStart = getISOWeekStart(year, week);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                const columns = box.querySelectorAll('.column-content');
+
+                // Collect items per day, then sort by start time then subject
+                const buckets = Array.from({ length: 7 }, () => []);
+                for (const item of pstItems) {
+                    const d = item.date;
+                    if (d >= weekStart && d < weekEnd) {
+                        const dow = (d.getDay() + 6) % 7; // 0=Mon ... 6=Sun
+                        buckets[dow].push(item);
+                    }
+                }
+
+                for (let i = 0; i < 7; i++) {
+                    buckets[i].sort((a, b) => {
+                        const ta = a.date?.getTime?.() ?? 0;
+                        const tb = b.date?.getTime?.() ?? 0;
+                        if (ta !== tb) return ta - tb;
+                        return (a.subject || '').localeCompare(b.subject || '');
+                    });
+                    for (const item of buckets[i]) {
+                        const el = document.createElement('div');
+                        el.className = 'pst-item';
+                        el.textContent = item.subject;
+                        el.title = item.subject;
+                        columns[i].appendChild(el);
+                    }
+                }
+            }
+        }
+
+        function printWeekView() {
+            window.print();
+        }
+        
+        async function makePDF() {
+            const element = document.getElementById('weeksContainer');
+
+            // Temporarily remove overflow:hidden so html2canvas renders borders
+            element.style.overflow = 'visible';
+
+            const canvas = await html2canvas(element, {
+                scale: 3,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: element.offsetWidth,
+                height: element.offsetHeight,
+                scrollX: 0,
+                scrollY: 0
+            });
+
+            element.style.overflow = 'hidden';
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'in',
+                format: [8.5, 11]
+            });
+            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, 8.5, 11);
+            pdf.save('week_view.pdf');
+        }
+    </script>
+</body>
+</html>
