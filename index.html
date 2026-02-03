@@ -659,15 +659,22 @@
         }
         
         async function saveImages() {
-            // Save each visible card as a PNG with the exact card bounds
+            // Save each visible card as a PNG sized to 8.5in x 3in (300 DPI)
             const targets = currentWeekSet.length
                 ? currentWeekSet
                 : weekBoxes.map((box, idx) => ({ box, week: idx + 1 }));
 
+            // Target pixel dimensions for 300 DPI output
+            const targetWidth = 8.5 * 300; // 2550px
+            const targetHeight = 3 * 300;  // 900px
+
             for (const { box, week } of targets) {
                 const rect = box.getBoundingClientRect();
+                // Scale so the rendered canvas matches the target pixel size
+                const scale = targetWidth / rect.width;
+
                 const canvas = await html2canvas(box, {
-                    scale: 3,
+                    scale,
                     useCORS: true,
                     backgroundColor: '#ffffff',
                     width: rect.width,
@@ -676,6 +683,7 @@
                     scrollY: 0
                 });
 
+                // html2canvas sets width/height based on scale; no extra resize needed
                 const link = document.createElement('a');
                 link.download = `week-card-${week}.png`;
                 link.href = canvas.toDataURL('image/png');
