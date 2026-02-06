@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Week View</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%232c2c2c'/><text x='16' y='23' text-anchor='middle' font-family='sans-serif' font-weight='700' font-size='18' fill='%23fafaf8' letter-spacing='-1'>KK</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -600,7 +601,15 @@
         window.addEventListener('resize', updateCardScale);
 
         async function makePDFReMarkable() {
-            for (const { year, week, box } of currentWeekSet) {
+            if (currentWeekSet.length === 0) return;
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [91.8, 163.2] });
+
+            for (let i = 0; i < currentWeekSet.length; i++) {
+                const { year, week, box } = currentWeekSet[i];
+                if (i > 0) pdf.addPage([91.8, 163.2]);
+
                 const rect = box.getBoundingClientRect();
                 // reMarkable Paper Pro Move: 1696x954 @ 264 PPI = 163.2x91.8mm
                 const scale = 1696 / rect.width;
@@ -640,19 +649,17 @@
                 ctx.rotate(Math.PI / 2);
                 ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
 
-                // PDF portrait: 91.8mm wide x 163.2mm tall (reMarkable Paper Pro Move screen)
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [91.8, 163.2] });
-
-                const imgData = rotated.toDataURL('image/png');
-                pdf.addImage(imgData, 'PNG', 0, 0, 91.8, 163.2);
-
-                const ww = String(week).padStart(2, '0');
-                pdf.save(`${year}${ww}.pdf`);
-
-                // Wait for download to complete before starting next
-                await new Promise(r => setTimeout(r, 1500));
+                pdf.addImage(rotated.toDataURL('image/png'), 'PNG', 0, 0, 91.8, 163.2);
             }
+
+            const first = currentWeekSet[0];
+            const last = currentWeekSet[currentWeekSet.length - 1];
+            const fw = String(first.week).padStart(2, '0');
+            const lw = String(last.week).padStart(2, '0');
+            const name = currentWeekSet.length === 1
+                ? `${first.year}${fw}.pdf`
+                : `${first.year}${fw}-${last.year}${lw}.pdf`;
+            pdf.save(name);
         }
 
     </script>
