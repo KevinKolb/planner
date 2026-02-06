@@ -649,6 +649,9 @@
 
                 const ww = String(week).padStart(2, '0');
                 pdf.save(`${year}${ww}.pdf`);
+
+                // Wait for download to complete before starting next
+                await new Promise(r => setTimeout(r, 1500));
             }
         }
 
