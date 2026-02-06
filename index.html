@@ -236,9 +236,10 @@
             }
 
             .week-box {
-                transform-origin: top left;
-                transform: scale(var(--card-scale));
-                margin-bottom: calc((91.8mm * var(--card-scale)) - 91.8mm);
+                transform: rotate(90deg) scale(var(--card-scale, 1));
+                transform-origin: center center;
+                margin: calc((163.2mm * var(--card-scale, 1) - 91.8mm) / 2)
+                        calc((91.8mm * var(--card-scale, 1) - 163.2mm) / 2);
             }
         }
 
@@ -587,13 +588,13 @@
 
         function updateCardScale() {
             if (!weekBoxes[0]) return;
-            // Temporarily remove scale to measure natural card width
             document.documentElement.style.setProperty('--card-scale', 1);
-            const cardWidth = weekBoxes[0].offsetWidth;
             const containerWidth = weeksContainer.clientWidth;
-            if (containerWidth < cardWidth) {
-                document.documentElement.style.setProperty('--card-scale', containerWidth / cardWidth);
-            }
+            const isMobile = window.matchMedia('(max-width: 700px)').matches;
+            // On mobile the card is rotated, so visual width = card height
+            const visualWidth = isMobile ? weekBoxes[0].offsetHeight : weekBoxes[0].offsetWidth;
+            const scale = containerWidth < visualWidth ? containerWidth / visualWidth : 1;
+            document.documentElement.style.setProperty('--card-scale', scale);
         }
 
         window.addEventListener('resize', updateCardScale);
