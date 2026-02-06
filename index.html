@@ -23,7 +23,7 @@
 
         body {
             margin: 20px;
-            font-family: 'Futura', 'Trebuchet MS', sans-serif;
+            font-family: 'Futura', system-ui, -apple-system, 'Segoe UI', sans-serif;
             background-color: #fbf8ef;
             color: var(--card-text);
         }
@@ -201,7 +201,44 @@
             background-color: #fafaf8;
             color: #2c2c2c;
         }
-        
+
+        @media (max-width: 700px) {
+            body {
+                margin: 12px;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+
+            .controls select,
+            .controls .upload-btn,
+            .controls button {
+                flex: 1 1 auto;
+                min-width: 0;
+                font-size: 13px;
+                padding: 10px 12px;
+            }
+
+            .controls span {
+                flex: 0 0 auto;
+            }
+
+            .controls button {
+                flex-basis: 100%;
+            }
+
+            .weeks-container {
+                width: 100%;
+            }
+
+            .week-box {
+                transform-origin: top left;
+                transform: scale(var(--card-scale));
+                margin-bottom: calc((91.8mm * var(--card-scale)) - 91.8mm);
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -369,6 +406,7 @@
             });
 
             displayWeekItems();
+            updateCardScale();
         }
 
         async function handleFileUpload(file) {
@@ -543,6 +581,19 @@
                 }
             }
         }
+
+        function updateCardScale() {
+            if (!weekBoxes[0]) return;
+            // Temporarily remove scale to measure natural card width
+            document.documentElement.style.setProperty('--card-scale', 1);
+            const cardWidth = weekBoxes[0].offsetWidth;
+            const containerWidth = weeksContainer.clientWidth;
+            if (containerWidth < cardWidth) {
+                document.documentElement.style.setProperty('--card-scale', containerWidth / cardWidth);
+            }
+        }
+
+        window.addEventListener('resize', updateCardScale);
 
         async function makePDFReMarkable() {
             for (const { year, week, box } of currentWeekSet) {
