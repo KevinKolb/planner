@@ -610,18 +610,19 @@
                 const { year, week, box } = currentWeekSet[i];
                 if (i > 0) pdf.addPage([91.8, 163.2]);
 
-                const rect = box.getBoundingClientRect();
                 // reMarkable Paper Pro Move: 1696x954 @ 264 PPI = 163.2x91.8mm
-                const scale = 1696 / rect.width;
+                const w = box.offsetWidth;
+                const h = box.offsetHeight;
+                const scale = 1696 / w;
 
                 const canvas = await html2canvas(box, {
                     scale,
                     useCORS: true,
                     backgroundColor: '#ffffff',
-                    width: rect.width,
-                    height: rect.height,
-                    scrollX: 0,
-                    scrollY: 0
+                    width: w,
+                    height: h,
+                    scrollX: -window.scrollX,
+                    scrollY: -window.scrollY
                 });
 
                 // Draw dot pattern on canvas (html2canvas doesn't capture CSS gradients)
