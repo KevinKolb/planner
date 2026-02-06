@@ -6,6 +6,7 @@
     <title>Week View</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,8 +17,8 @@
         :root {
             --card-bg: transparent;
             --card-dot: #ede5d7;
-            --card-border: #d6cdbf;
-            --card-text: #6a655d;
+            --card-border: #000000;
+            --card-text: #000000;
             --accent: #2c2c2c;
         }
 
@@ -74,13 +75,13 @@
             text-transform: uppercase;
             font-weight: 600;
             margin-bottom: 15px;
-            color: #555;
+            color: #000000;
         }
         
         .week-box {
-            width: 8.5in;
-            height: 3in;
-            border: 1px solid var(--card-border);
+            width: 195.6mm;
+            height: 107.8mm;
+            border: none;
             background-color: transparent;
             background-image:
                 radial-gradient(var(--card-dot) 3%, transparent 14%),
@@ -91,7 +92,7 @@
             box-sizing: border-box;
             display: grid;
             grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: 2in 1in;
+            grid-template-rows: 71.87mm 35.93mm;
             gap: 0;
             position: relative;
             overflow: hidden;
@@ -106,7 +107,7 @@
         }
 
         .column {
-            border-right: 1px solid rgba(0,0,0,0.06);
+            border-right: 1px solid #000000;
             border-radius: 0;
             background-color: transparent;
             padding: 10px 10px 6px 10px;
@@ -116,7 +117,7 @@
             position: relative;
         }
         
-        .column:nth-child(5),
+        .column:nth-child(6),
         .column:last-child {
             border-right: none;
         }
@@ -144,18 +145,18 @@
 
         .week-box > .column:nth-of-type(n+6) {
             grid-column: span 5;
-            border-top: 1px solid #e8e6df;
+            border-top: 1px solid #000000;
         }
         
         .day-label {
             font-size: 12px;
             font-weight: 600;
             letter-spacing: 0.8px;
-            color: rgba(0,0,0,0.5);
+            color: #000000;
             text-transform: uppercase;
             margin-bottom: 6px;
             padding-bottom: 4px;
-            border-bottom: 1px solid rgba(0,0,0,0.08);
+            border-bottom: 1px solid #000000;
             flex-shrink: 0;
             line-height: 1;
             font-stretch: condensed;
@@ -238,9 +239,9 @@
             .week-box {
                 box-shadow: none;
                 margin: 0;
-                width: 8.5in;
-                height: 3in;
-                border: 1px solid var(--card-border);
+                width: 195.6mm;
+                height: 107.8mm;
+                border: none;
                 page-break-inside: avoid;
             }
 
@@ -258,6 +259,8 @@
     <div class="controls">
         <select id="yearSelect" onchange="populateWeeks()"></select>
         <select id="weekSelect" onchange="updateWatermark()"></select>
+        <span style="align-self:center;font-weight:500">to</span>
+        <select id="endWeekSelect"></select>
         <label class="upload-btn">
             Upload .pst / .ics
             <input type="file" id="calFile" accept=".pst,.ics" onchange="handleFileUpload(this.files[0])" hidden>
@@ -266,6 +269,7 @@
         <button onclick="saveImages()">Save Image</button>
         <button onclick="makePDF()">Make PDF</button>
         <button onclick="makePDFTablet()">PDF for Tablet</button>
+        <button onclick="downloadZIP()">Download ZIP</button>
     </div>
     
     <h1>Weekly Card</h1>
@@ -368,6 +372,7 @@
     <script>
         const yearSelect = document.getElementById('yearSelect');
         const weekSelect = document.getElementById('weekSelect');
+        const endWeekSelect = document.getElementById('endWeekSelect');
         const weekBoxes = Array.from(document.querySelectorAll('.week-box'));
 
         // Populate year dropdown, default to current year
@@ -441,14 +446,20 @@
             const year = parseInt(yearSelect.value);
             const numWeeks = getISOWeekCount(year);
             weekSelect.innerHTML = '';
+            endWeekSelect.innerHTML = '';
             for (let w = 1; w <= numWeeks; w++) {
                 const mon = getISOWeekStart(year, w);
                 const sun = new Date(mon);
                 sun.setDate(mon.getDate() + 6);
+                const label = 'Wk ' + w + ': ' + formatDate(mon) + ' – ' + formatDate(sun);
                 const opt = document.createElement('option');
                 opt.value = w;
-                opt.textContent = 'Wk ' + w + ': ' + formatDate(mon) + ' – ' + formatDate(sun);
+                opt.textContent = label;
                 weekSelect.appendChild(opt);
+                const opt2 = document.createElement('option');
+                opt2.value = w;
+                opt2.textContent = label;
+                endWeekSelect.appendChild(opt2);
             }
             updateWatermark();
         }
@@ -458,6 +469,7 @@
         const currentWeek = getCurrentISOWeek();
         if (weekSelect.querySelector('option[value="' + currentWeek + '"]')) {
             weekSelect.value = currentWeek;
+            endWeekSelect.value = currentWeek;
             updateWatermark();
         }
 
@@ -662,14 +674,14 @@
         }
         
         async function saveImages() {
-            // Save each visible card as a PNG sized to 8.5in x 3in (300 DPI)
+            // Save each visible card as a PNG sized to 7.7in x 4.24in (300 DPI)
             const targets = currentWeekSet.length
                 ? currentWeekSet
                 : weekBoxes.map((box, idx) => ({ box, week: idx + 1 }));
 
             // Target pixel dimensions for 300 DPI output
-            const targetWidth = 8.5 * 300; // 2550px
-            const targetHeight = 3 * 300;  // 900px
+            const targetWidth = 7.7 * 300; // 2310px
+            const targetHeight = 4.24 * 300; // 1272px
 
             for (const { box, week } of targets) {
                 const rect = box.getBoundingClientRect();
@@ -696,7 +708,7 @@
         async function makePDF() {
             const box = weekBoxes[0];
             const rect = box.getBoundingClientRect();
-            const targetWidth = 8.5 * 300;
+            const targetWidth = 7.7 * 300;
             const scale = targetWidth / rect.width;
 
             const canvas = await html2canvas(box, {
@@ -718,12 +730,12 @@
             ctx.rotate(Math.PI / 2);
             ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
 
-            // Create PDF sized exactly to the rotated card: 3in wide x 8.5in tall
+            // Create PDF sized exactly to the rotated card: 4.24in wide x 7.7in tall
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [3, 8.5] });
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [4.24, 7.7] });
 
             const imgData = rotated.toDataURL('image/png');
-            pdf.addImage(imgData, 'PNG', 0, 0, 3, 8.5);
+            pdf.addImage(imgData, 'PNG', 0, 0, 4.24, 7.7);
 
             const week = box.dataset.week || 'week';
             pdf.save(`week-card-${week}.pdf`);
@@ -732,7 +744,7 @@
         async function makePDFTablet() {
             const box = weekBoxes[0];
             const rect = box.getBoundingClientRect();
-            const targetWidth = 8.5 * 300;
+            const targetWidth = 7.7 * 300;
             const scale = targetWidth / rect.width;
 
             const canvas = await html2canvas(box, {
@@ -754,24 +766,115 @@
             ctx.rotate(Math.PI / 2);
             ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
 
-            // Resize to reMarkable Paper Pro Move: 954 x 1696 px
-            const final = document.createElement('canvas');
-            final.width = 954;
-            final.height = 1696;
-            const fctx = final.getContext('2d');
-            fctx.drawImage(rotated, 0, 0, 954, 1696);
-
-            // Create PDF sized to 954x1696 px (convert to inches at 264 PPI to match device)
+            // Create PDF sized to reMarkable Paper Pro Move: 107.8 x 195.6 mm
             const { jsPDF } = window.jspdf;
-            const pdfW = 954 / 264;
-            const pdfH = 1696 / 264;
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: [pdfW, pdfH] });
+            const pdfW = 107.8;
+            const pdfH = 195.6;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [pdfW, pdfH] });
 
-            const imgData = final.toDataURL('image/png');
+            const imgData = rotated.toDataURL('image/png');
             pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
 
             const week = box.dataset.week || 'week';
             pdf.save(`week-card-${week}-tablet.pdf`);
+        }
+
+        async function downloadZIP() {
+            const startWeek = parseInt(weekSelect.value);
+            const endWeek = parseInt(endWeekSelect.value);
+            const year = parseInt(yearSelect.value);
+            if (endWeek < startWeek) {
+                alert('End week must be after start week.');
+                return;
+            }
+
+            const zip = new JSZip();
+            const box = weekBoxes[0];
+
+            for (let w = startWeek; w <= endWeek; w++) {
+                const { year: y, week } = normalizeWeek(year, w);
+
+                // Update box for this week
+                box.dataset.week = week;
+                const wm = box.querySelector('.watermark');
+                if (wm) wm.textContent = week;
+                const mon = getISOWeekStart(y, week);
+                const labels = box.querySelectorAll('.day-label');
+                for (let i = 0; i < labels.length; i++) {
+                    const d = new Date(mon);
+                    d.setDate(mon.getDate() + i);
+                    labels[i].textContent = dayLetters[i] + monthLetters[d.getMonth()] + d.getDate();
+                }
+
+                // Populate calendar items for this week
+                box.querySelectorAll('.pst-item').forEach(el => el.remove());
+                const weekStart = getISOWeekStart(y, week);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 7);
+                const columns = box.querySelectorAll('.column-content');
+                const buckets = Array.from({ length: 7 }, () => []);
+                for (const item of pstItems) {
+                    const d = item.date;
+                    if (d >= weekStart && d < weekEnd) {
+                        buckets[(d.getDay() + 6) % 7].push(item);
+                    }
+                }
+                for (let i = 0; i < 7; i++) {
+                    buckets[i].sort((a, b) => {
+                        const ta = a.date?.getTime?.() ?? 0;
+                        const tb = b.date?.getTime?.() ?? 0;
+                        if (ta !== tb) return ta - tb;
+                        return (a.subject || '').localeCompare(b.subject || '');
+                    });
+                    for (const item of buckets[i]) {
+                        const el = document.createElement('div');
+                        el.className = 'pst-item';
+                        el.textContent = item.subject;
+                        el.title = item.subject;
+                        columns[i].appendChild(el);
+                    }
+                }
+
+                // Render to canvas
+                const rect = box.getBoundingClientRect();
+                const targetWidth = 7.7 * 300;
+                const scale = targetWidth / rect.width;
+                const canvas = await html2canvas(box, {
+                    scale,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: rect.width,
+                    height: rect.height,
+                    scrollX: 0,
+                    scrollY: 0
+                });
+
+                // Rotate 90 degrees clockwise
+                const rotated = document.createElement('canvas');
+                rotated.width = canvas.height;
+                rotated.height = canvas.width;
+                const ctx = rotated.getContext('2d');
+                ctx.translate(rotated.width / 2, rotated.height / 2);
+                ctx.rotate(Math.PI / 2);
+                ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+
+                // Create tablet PDF
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [107.8, 195.6] });
+                pdf.addImage(rotated.toDataURL('image/png'), 'PNG', 0, 0, 107.8, 195.6);
+                zip.file(`week-${week}.pdf`, pdf.output('arraybuffer'));
+            }
+
+            // Restore original display
+            updateWatermark();
+
+            // Download ZIP
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.download = `weeks-${startWeek}-${endWeek}.zip`;
+            link.href = URL.createObjectURL(blob);
+            link.click();
+            URL.revokeObjectURL(link.href);
         }
     </script>
 </body>
